@@ -4,10 +4,11 @@ import pySpriteWorld.glo as glo
 import pygame
 from collections import OrderedDict
 import random
-from pySpriteWorld.sprite import MySprite,MovingSprite
+from pySpriteWorld.sprite import MySprite, MovingSprite
 from functools import wraps
 import copy
-import os, sys
+import os
+import sys
 
 try:
     from toolz import first
@@ -20,32 +21,34 @@ from pySpriteWorld.collisions2 import CollisionHandler2
 def check_init_game_done(fun):
     """ decorator checking if init() has correctly been called before anything """
     @wraps(fun)
-    def fun_checked(*args,**kwargs):
+    def fun_checked(*args, **kwargs):
         try:
             Game.single_instance.screen
         except:
-            raise Exception('Vous devez appeler la fonction init() avant toute chose')
-        return fun(*args,**kwargs)
+            raise Exception(
+                'Vous devez appeler la fonction init() avant toute chose')
+        return fun(*args, **kwargs)
     return fun_checked
 
 
 class Game(object):
     """ Design Pattern 'Singleton', so only one instance of Game can exist """
     single_instance = None
+
     def __new__(cls, *args, **kwargs):
         if cls.single_instance is None:
             cls.single_instance = object.__new__(cls, *args, **kwargs)
 
         return cls.single_instance
 
-
     def __init__(self, fichiercarte=None, _SpriteBuilder=None):
         # if no parameter is given, then __init__ will just create an empty Game object
         if fichiercarte is None or _SpriteBuilder is None:
             return
 
-        #reset pygame
-        pygame.quit() ; pygame.init()
+        # reset pygame
+        pygame.quit()
+        pygame.init()
 
         # callbacks is a dictionary of functions to call depending on key pressed
         self.callbacks = {}
@@ -56,7 +59,6 @@ class Game(object):
         # cree la fenetre pygame
         self.screen = pygame.display.set_mode([self.spriteBuilder.spritesize * self.spriteBuilder.rowsize,
                                                self.spriteBuilder.spritesize * self.spriteBuilder.colsize])
-
 
         pygame.display.set_caption("pySpriteWorld Experiment")
         self.spriteBuilder.screen = self.screen
@@ -76,19 +78,22 @@ class Game(object):
             raise IndexError("Je ne trouve aucun joueur dans le fichier TMX")
 
         # prepare le bitmap 'background'
-        self.background = pygame.Surface([self.screen.get_width(), self.screen.get_height()]).convert()
+        self.background = pygame.Surface(
+            [self.screen.get_width(), self.screen.get_height()]).convert()
         self.layers["bg1"].draw(self.background)
         self.layers["bg2"].draw(self.background)
 
         # cree un masque de la taille de l'ecran, pour le calcul des collisions
-        self.mask = CollisionHandler2(self.screen,self.spriteBuilder.spritesize)
+        self.mask = CollisionHandler2(
+            self.screen, self.spriteBuilder.spritesize)
 
         # click clock
         self.clock = pygame.time.Clock()
         self.framecount = 0
 
     def setup_keyboard_callbacks(self):
-        self.callbacks = self.player.gen_callbacks(self.player.rect.w, self.layers, self.mask)
+        self.callbacks = self.player.gen_callbacks(
+            self.player.rect.w, self.layers, self.mask)
 
     def update(self):
         self.mask.handle_collision(self.layers, self.player)
@@ -97,14 +102,13 @@ class Game(object):
             self.layers[layer].update()
 
     def draw(self):
-        self.screen.blit(self.background, (0, 0), (0, 0, self.screen.get_width(), self.screen.get_height()))
+        self.screen.blit(self.background, (0, 0), (0, 0,
+                         self.screen.get_width(), self.screen.get_height()))
         for layer in glo.NON_BG_LAYERS:
             if layer != "cache":
                 self.layers[layer].draw(self.screen)
 
-
         pygame.display.flip()
-
 
     def kill_dessinable(self):
         while self.layers['dessinable']:
@@ -114,12 +118,14 @@ class Game(object):
 
     def prepare_dessinable(self):
         if not self.layers['dessinable']:
-            self.surfaceDessinable = pygame.Surface([self.screen.get_width(), self.screen.get_height()]).convert()
-            self.surfaceDessinable.set_colorkey( (0,0,0) )
-            self.layers['dessinable'].add( MySprite('dessinable',None,0,0,[self.surfaceDessinable]) )
+            self.surfaceDessinable = pygame.Surface(
+                [self.screen.get_width(), self.screen.get_height()]).convert()
+            self.surfaceDessinable.set_colorkey((0, 0, 0))
+            self.layers['dessinable'].add(
+                MySprite('dessinable', None, 0, 0, [self.surfaceDessinable]))
 
-    def mainiteration(self, _fps=None, _frameskip = None):
-        if os.environ.get("SDL_VIDEODRIVER") != 'dummy': # if there is a real x-server
+    def mainiteration(self, _fps=None, _frameskip=None):
+        if os.environ.get("SDL_VIDEODRIVER") != 'dummy':  # if there is a real x-server
             if pygame.event.peek():
                 for event in pygame.event.get():  # User did something
                     if event.type == pygame.QUIT:  # If user clicked close
@@ -135,23 +141,20 @@ class Game(object):
         # call self.draw() once every 'frameskip' iterations
         fs = _frameskip if _frameskip is not None else self.frameskip
         self.framecount = (self.framecount+1) % (fs+1)
-        if self.framecount==0:
+        if self.framecount == 0:
             self.draw()
             self.clock.tick(_fps if _fps is not None else self.fps)
-
 
     def mainloop(self):
         while True:
             self.mainiteration()
 
-
-    def populate_sprite_names(self,ontology):
+    def populate_sprite_names(self, ontology):
         for layer in self.layers.values():
             for s in layer:
                 s.firstname = ontology.firstname(s)
 
-
-    def add_players(self,xy,player=None,tiled=True,draw_now=True):
+    def add_players(self, xy, player=None, tiled=True, draw_now=True):
         """
             Attemps to add one or many new players at position x,y
             Fails if the new player is colliding something, and then return False
@@ -167,10 +170,10 @@ class Game(object):
             []
         """
         assert type(xy) is tuple
-        x,y = xy
+        x, y = xy
 
         if tiled:
-            x,y = x*self.spriteBuilder.spritesize,y*self.spriteBuilder.spritesize
+            x, y = x*self.spriteBuilder.spritesize, y*self.spriteBuilder.spritesize
 
         try:
             tileid = player.tileid
@@ -180,14 +183,16 @@ class Game(object):
         if not MovingSprite.up_to_date:
             self.mask.handle_collision(self.layers)
 
-        pnew = self.spriteBuilder.basicPlayerFactory(tileid,x=x,y=y)
+        pnew = self.spriteBuilder.basicPlayerFactory(tileid, x=x, y=y)
 
         if self.mask.collision_blocking_player(pnew) == []:
-            self.layers['joueur'].add( pnew )
-            self.mask.draw_player_mask( pnew )
-            self.mask.add_or_update_sprite( pnew )
-            if draw_now: self.mainiteration()
+            self.layers['joueur'].add(pnew)
+            self.mask.draw_player_mask(pnew)
+            self.mask.add_or_update_sprite(pnew)
+            if draw_now:
+                self.mainiteration()
             return pnew
         else:
-            if draw_now: self.mainiteration()
+            if draw_now:
+                self.mainiteration()
             return False
