@@ -1,4 +1,11 @@
 { "compressionlevel":-1,
+ "editorsettings":
+    {
+     "export":
+        {
+         "target":"."
+        }
+    },
  "height":2,
  "infinite":false,
  "layers":[
@@ -27,7 +34,7 @@
          "y":0
         }, 
         {
-         "data":[0, 0, 14, 0, 0, 0, 0, 0, 0, 0],
+         "data":[14, 14, 0, 14, 14, 0, 0, 0, 0, 0],
          "height":2,
          "id":3,
          "name":"obstacles",
@@ -66,7 +73,7 @@
          "margin":0,
          "name":"tiny_complete",
          "spacing":0,
-         "tilecount":416,
+         "tilecount":0,
          "tileheight":32,
          "tilewidth":32
         }],

@@ -21,16 +21,6 @@ from search.grid2D import ProblemeGrid2D
 from search import probleme
 from team import Agent, Team
 
-
-# ---- ---- ---- ---- ---- ----
-# ---- Misc                ----
-# ---- ---- ---- ---- ---- ----
-
-
-# ---- ---- ---- ---- ---- ----
-# ---- Main                ----
-# ---- ---- ---- ---- ---- ----
-
 game = Game()
 
 
@@ -50,10 +40,9 @@ def main():
     iterations = 10  # default
     if len(sys.argv) == 4:
         iterations = int(sys.argv[1])
-    print("Iterations: ")
-    print(iterations)
+    print("Iterations: ", iterations)
 
-    init('map1')
+    init('map4')
 
     # -------------------------------
     # Initialisation
@@ -65,10 +54,8 @@ def main():
     print("lignes", nbLignes)
     print("colonnes", nbCols)
 
-    nbTeams = 2
     players = [o for o in game.layers['joueur']]
     nbPlayers = len(players)
-    score = [0]*nbPlayers
 
     # on localise tous les états initiaux (loc du joueur)
     # positions initiales des joueurs
@@ -85,47 +72,45 @@ def main():
     wallStates = [w.get_rowcol() for w in game.layers['obstacle']]
     print("Wall states:", wallStates)
 
-    global playerStates
-    playerStates = {}
-
     # par defaut la matrice comprend des True
     map = np.ones((nbLignes, nbCols), dtype=bool)
     for w in wallStates:            # putting False for walls
         map[w] = False
 
+    global playerStates
+    playerStates = {}
+
     # define team strategies
-    strategies = ['A* update if collision in next step',
-                  'A* update if collision in next step']
-    # strategies = ['A* update every step', 'A* update every step']
-    # strategies = ['A*', 'A*']
+    #strategies = ['Local A*', 'Local A*']
+    strategies = ['Cooperative A*', 'Cooperative A*']
+
     goalStates = goalStates[:: -1]
     agents = []
     for i in range(nbPlayers):
-        agents.append(Agent(initStates[i], goalStates[i], i))
+        agents.append(Agent(initStates[i], goalStates[i], map, i,))
         playerStates[str(i)] = initStates[i]
 
     teams = []
-    # for i in range(nbTeams):
-    #    teams.append(Team(strategies[i], [agents[i]]))
-    teams.append(Team(strategies[0], [agents[0], agents[1]]))
+    teams.append(Team(strategies[0], [agents[0], agents[1]], iterations))
+
+    # give every agent it's team
+    for team in teams:
+        for agent in team.agents:
+            agent.team = team
+    # teams.append(Team(strategies[0], [agents[0]]))  # Team 0
+    # teams.append(Team(strategies[0], [agents[1]]))  # Team 1
+
     # -------------------------------
     # Boucle principale de déplacements
     # -------------------------------
-    game_ended = False
     for i in range(iterations):
-        if game_ended:
-            break
+        print(i)
         for team in teams:
-            if team.update_positions(map, playerStates, i):
-                game_ended = True
-                break
+            team.update_positions(playerStates, i)
             for agent in team.agents:
-                row, col = agent.current_state
+                row, col = agent.current_state[0:2]
                 players[agent.id].set_rowcol(row, col)
-            # on passe a l'iteration suivante du jeu
-            game.mainiteration()
-
-    # print("scores:", score)
+            game.mainiteration()  # on passe a l'iteration suivante du jeu
     pygame.quit()
 
     # -------------------------------
