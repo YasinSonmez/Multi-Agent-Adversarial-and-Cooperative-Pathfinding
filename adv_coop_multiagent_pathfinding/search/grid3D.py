@@ -23,12 +23,13 @@ class ProblemeGrid3D():
         - une heuristique (supporte Manhattan, euclidienne)
         """
 
-    def __init__(self, init, but, grid, heuristique, reserved=None):
+    def __init__(self, init, but, grid, heuristique, reserved=None, time_limit=10):
         self.init = init
         self.but = but
         self.grid = grid
         self.heuristique = heuristique
         self.reserved = reserved
+        self.time_limit = time_limit
 
     def cost(self, e1, e2):
         """ donne le cout d'une action entre e1 et e2, 
@@ -53,6 +54,10 @@ class ProblemeGrid3D():
         (x, y) = etat[0:2]
         return ((x >= s) or (y >= t) or (x < 0) or (y < 0))
 
+    def estTimeLimit(self, etat):
+        """retourne vrai si le limite de temps est passe"""
+        return etat[2] > self.time_limit
+
     def estReserved(self, etat):
         """retourne vrai si en dehors de la grille
             """
@@ -68,7 +73,7 @@ class ProblemeGrid3D():
         d = [(0, 1, 1), (1, 0, 1), (0, -1, 1), (-1, 0, 1), (0, 0, 1)]
         etatsApresMove = [(current_x+inc_x, current_y+inc_y, current_t+inc_t)
                           for (inc_x, inc_y, inc_t) in d]
-        return [e for e in etatsApresMove if not(self.estDehors(e)) and not(self.estObstacle(e)) and not(self.estReserved(e))]
+        return [e for e in etatsApresMove if not(self.estDehors(e)) and not(self.estObstacle(e)) and not(self.estReserved(e)) and not(self.estTimeLimit(e))]
 
     def immatriculation(self, etat):
         """ génère une chaine permettant d'identifier un état de manière unique

@@ -12,6 +12,7 @@ from abc import ABCMeta, abstractmethod
 import functools
 import time
 from search.grid3D import ProblemeGrid3D
+import itertools
 
 
 def distManhattan(p1, p2):
@@ -190,7 +191,8 @@ def coop_astar(inits, buts, grid, time_limit, verbose=False, stepwise=False):
     reserved = []
     paths = []
     for init, but in zip(inits, buts):
-        new_problem = ProblemeGrid3D(init, but, grid, "manhattan", reserved)
+        new_problem = ProblemeGrid3D(
+            init, but, grid, "manhattan", reserved, time_limit)
         path = astar(new_problem, True)
         paths.append(path)
         for (x, y, t) in path:
@@ -199,3 +201,277 @@ def coop_astar(inits, buts, grid, time_limit, verbose=False, stepwise=False):
         for delta_t in range(time_limit-path[-1][2]):
             reserved.append((path[-1][0], path[-1][1], t+delta_t))
     return paths
+
+
+#############################################
+# Alpha Beta Pruning
+#############################################
+
+class GameNode:
+    def __init__(self, team_states, depth, value=0, parent=None):
+        # a numpy array False for walls True for empty cell, 'xij' for player j of team i, 'yij' for goal j of team i
+        self.team_states = team_states  # dictionary for team 0 and 1 agents states
+        self.depth = depth
+        self.value = value    # an int
+        self.parent = parent  # a node reference
+        self.children = []    # a list of nodes
+
+    def addChild(self, childNode):
+        self.children.append(childNode)
+
+
+class GameTree:
+    def __init__(self):
+        self.root = None
+
+    def build_tree(self, map, team_states, team_goal_states, depth_limit):
+        """
+        :param data_list: Take data in list format
+        :return: Parse a tree from it
+        """
+        self.map = map
+        self.team_states = team_states
+        self.team_goal_states = team_goal_states
+        self.depth_limit = depth_limit
+        self.root = GameNode(team_states, 0)
+        self.parse_subtree(team_states, self.root)
+
+    def legal_position(self, rowcol, team_states):
+        if(rowcol[0] >= 0 and rowcol[0] < self.map.shape[0] and rowcol[1] >= 0 and rowcol[1] < self.map.shape[1]):
+            if self.map[rowcol] == True:
+                if not(rowcol in team_states['0']) and not(rowcol in team_states['1']):
+                    return True
+        return False
+
+    def possible_positions_from_a_state(self, rowcol, team_states):
+        possible_states = []
+        for dir in [(1, 0), (0, -1), (-1, 0), (0, 1), (0, 0)]:
+            next_state = tuple(np.add(rowcol, dir))
+            if self.legal_position(next_state, team_states) or next_state == rowcol:
+                possible_states.append(next_state)
+        return possible_states
+
+    def all_possible_position_combinations(self, team_states, team):
+        possible_states_array = []
+        for agent_state in team_states[team]:
+            possible_states_array.append(
+                self.possible_positions_from_a_state(agent_state, team_states))
+        combinations = list(itertools.product(*possible_states_array))
+        for elem in combinations:
+            if len(set(elem)) != len(elem):
+                combinations.remove(elem)
+        return combinations
+
+    def new_team_states(self, team_states, team):
+        team_states_list = []
+        temp_dict = team_states.copy()
+        combinations = self.all_possible_position_combinations(
+            team_states, team)
+        for combination in combinations:
+            temp_dict[team] = combination
+            team_states_list.append(temp_dict.copy())
+        return team_states_list
+
+    def parse_subtree(self, team_states, parent):
+        # base case
+        if parent.depth == self.depth_limit-1:
+            # if we're at a leaf, set the value
+            team = '1' if parent.depth % 2 else '0'
+            for new_team_states in self.new_team_states(team_states, team):
+                leaf_node = GameNode(new_team_states, parent.depth+1)
+                # make connections
+                leaf_node.parent = parent
+                parent.addChild(leaf_node)
+                score = 0
+                for i in range(len(leaf_node.team_states['0'])):
+                    if leaf_node.team_states['0'][i] == self.team_goal_states['0'][i]:
+                        score += 1
+                for i in range(len(leaf_node.team_states['1'])):
+                    if leaf_node.team_states['1'][i] == self.team_goal_states['1'][i]:
+                        score -= 1
+                leaf_node.value = score
+                """if score == 2:
+                    my_node = leaf_node
+                    print(leaf_node.team_states, score, leaf_node.depth)
+                    print(my_node.team_states, my_node.depth)
+                    while my_node.parent != self.root:
+                        print(my_node.parent.team_states, my_node.parent.depth)
+                        my_node = my_node.parent"""
+            return
+        # recursive case
+        team = '1' if parent.depth % 2 else '0'
+        for new_team_states in self.new_team_states(team_states, team):
+            tree_node = GameNode(new_team_states, parent.depth+1)
+            # make connections
+            tree_node.parent = parent
+            parent.addChild(tree_node)
+            self.parse_subtree(new_team_states, tree_node)
+
+        # return from entire method if base case and recursive case both done running
+        return
+
+
+##########################
+###### MINI-MAX     ######
+##########################
+
+class MiniMax:
+    # print utility value of root node (assuming it is max)
+    # print names of all nodes visited during search
+    def __init__(self, game_tree, isMin=False):
+        self.game_tree = game_tree  # GameTree
+        self.root = game_tree.root  # GameNode
+        self.isMin = isMin  # if root node is Minimizing node reverse the values
+        self.currentNode = None     # GameNode
+        self.successors = []        # List of GameNodes
+        return
+
+    def minimax(self, node):
+        # first, find the max value
+        best_val = self.max_value(node)  # should be root node of tree
+
+        # second, find the node which HAS that max value
+        #  –> means we need to propagate the values back up the
+        #      tree as part of our minimax algorithm
+        successors = self.getSuccessors(node)
+        print("MiniMax:  Utility Value of Root Node: = " + str(best_val))
+        # find the node with our best move
+        best_move = None
+        for elem in successors:   # —> Need to propagate values up tree for this to work
+            my_value = -elem.value if self.isMin else elem.value
+            if elem.value == best_val:
+                best_move = elem
+                break
+
+        # return that best value that we've found
+        return best_move
+
+    def max_value(self, node):
+        #print("MiniMax–>MAX: Visited Node :: ", node.team_states, node.value, self.isTerminal(node))
+        if self.isTerminal(node):
+            return self.getUtility(node)
+
+        infinity = float('inf')
+        max_value = -infinity
+
+        successors_states = self.getSuccessors(node)
+        for state in successors_states:
+            max_value = max(max_value, self.min_value(state))
+        return max_value
+
+    def min_value(self, node):
+        #print("MiniMax–>MIN: Visited Node :: ", node.team_states, node.value, self.isTerminal(node))
+        if self.isTerminal(node):
+            return self.getUtility(node)
+
+        infinity = float('inf')
+        min_value = infinity
+
+        successor_states = self.getSuccessors(node)
+        for state in successor_states:
+            min_value = min(min_value, self.max_value(state))
+        return min_value
+
+    #                     #
+    #   UTILITY METHODS   #
+    #                     #
+
+    # successor states in a game tree are the child nodes…
+    def getSuccessors(self, node):
+        assert node is not None
+        return node.children
+
+    # return true if the node has NO children (successor states)
+    # return false if the node has children (successor states)
+    def isTerminal(self, node):
+        assert node is not None
+        return len(node.children) == 0
+
+    def getUtility(self, node):
+        assert node is not None
+        if self.isMin:
+            return -node.value
+        else:
+            return node.value
+
+
+##########################
+###### MINI-MAX A-B ######
+##########################
+
+class AlphaBeta:
+    # print utility value of root node (assuming it is max)
+    # print names of all nodes visited during search
+    def __init__(self, game_tree, isMin=False):
+        self.game_tree = game_tree  # GameTree
+        self.isMin = isMin  # if root node is Minimizing node reverse the values
+        self.root = game_tree.root  # GameNode
+        return
+
+    def alpha_beta_search(self, node):
+        infinity = float('inf')
+        best_val = - infinity
+        beta = infinity
+
+        successors = self.getSuccessors(node)
+        best_state = None
+        for state in successors:
+            value = self.min_value(state, best_val, beta)
+            if value > best_val:
+                best_val = value
+                best_state = state
+        print("AlphaBeta:  Utility Value of Root Node: = " + str(best_val))
+        print("AlphaBeta:  Best State is: ", best_state.team_states)
+        return best_state
+
+    def max_value(self, node, alpha, beta):
+        #print("AlphaBeta–>MAX: Visited Node :: " , node.team_states)
+        if self.isTerminal(node):
+            return self.getUtility(node)
+        infinity = float('inf')
+        value = -infinity
+
+        successors = self.getSuccessors(node)
+        for state in successors:
+            value = max(value, self.min_value(state, alpha, beta))
+            if value >= beta:
+                return value
+            alpha = max(alpha, value)
+        return value
+
+    def min_value(self, node, alpha, beta):
+        #print("AlphaBeta–>MIN: Visited Node :: ", node.team_states)
+        if self.isTerminal(node):
+            return self.getUtility(node)
+        infinity = float('inf')
+        value = infinity
+
+        successors = self.getSuccessors(node)
+        for state in successors:
+            value = min(value, self.max_value(state, alpha, beta))
+            if value <= alpha:
+                return value
+            beta = min(beta, value)
+
+        return value
+    #                     #
+    #   UTILITY METHODS   #
+    #                     #
+
+    # successor states in a game tree are the child nodes…
+    def getSuccessors(self, node):
+        assert node is not None
+        return node.children
+
+    # return true if the node has NO children (successor states)
+    # return false if the node has children (successor states)
+    def isTerminal(self, node):
+        assert node is not None
+        return len(node.children) == 0
+
+    def getUtility(self, node):
+        assert node is not None
+        if self.isMin:
+            return -node.value
+        else:
+            return node.value
