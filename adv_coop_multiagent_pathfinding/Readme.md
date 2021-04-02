@@ -28,11 +28,15 @@
 * Buts aléatoires dans chaque match
 * Agents aléatoires dans chaque jeu
 
-- Coopérative A\* semble avoir un résultat légèrement meilleur que le local A\*.
+- Coopérative A\* semble avoir un résultat légèrement meilleur que le local A\*. Mais il est beacoup meilleure dans les environments denses.
 
 - Nous ne pouvons pas comparer Alpha-Beta avec les autres algorithmes dans les grandes cartes car il faut trop de temps pour traiter un arbre énorme avec un facteur de branchement énorme.
 
 |Gif | Result|
 |:-: | :-: |
 |<img src="https://github.com/SU-LU3IN025-fev2021/projet-adv-coop-multiagent-pathfinding-yasin-groupe4/blob/main/adv_coop_multiagent_pathfinding/media/adversarial.gif" width="400" /> |  <img src="https://github.com/SU-LU3IN025-fev2021/projet-adv-coop-multiagent-pathfinding-yasin-groupe4/blob/main/adv_coop_multiagent_pathfinding/media/local_vs_coop.png" width="500" /> |
+
+|Gif | Result|
+|:-: | :-: |
+|<img src="https://github.com/SU-LU3IN025-fev2021/projet-adv-coop-multiagent-pathfinding-yasin-groupe4/blob/main/adv_coop_multiagent_pathfinding/media/adversarial_dense.gif" width="400" /> |  <img src="https://github.com/SU-LU3IN025-fev2021/projet-adv-coop-multiagent-pathfinding-yasin-groupe4/blob/main/adv_coop_multiagent_pathfinding/media/local_vs_coop_dense.png" width="500" /> |
 
