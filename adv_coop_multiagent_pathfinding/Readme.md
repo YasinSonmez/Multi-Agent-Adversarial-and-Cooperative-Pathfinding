@@ -40,3 +40,6 @@
 |:-: | :-: |
 |<img src="https://github.com/SU-LU3IN025-fev2021/projet-adv-coop-multiagent-pathfinding-yasin-groupe4/blob/main/adv_coop_multiagent_pathfinding/media/adversarial_dense.gif" width="400" /> |  <img src="https://github.com/SU-LU3IN025-fev2021/projet-adv-coop-multiagent-pathfinding-yasin-groupe4/blob/main/adv_coop_multiagent_pathfinding/media/local_vs_coop_dense.png" width="500" /> |
 
+# References
+1. https://tonypoer.io/2016/10/28/implementing-minimax-and-alpha-beta-pruning-using-python/
+2. https://tonypoer.io/2016/10/08/recursively-parsing-a-list-of-lists-into-a-game-tree-using-python/
